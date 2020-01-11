@@ -56,12 +56,12 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <fakemeta>
+#include <hamsandwich>
 
 #define PLUGIN "RealChute"
-#define VERSION "1.92"
+#define VERSION "2.0H"
 #define AUTHOR "Vet(3TT3V)"
-#define SVARIABLE "RealChute"
-#define SVALUE "v1.92 by Vet(3TT3V)"
+#define SVALUE "v2.0H by Vet(3TT3V)"
 
 #define DEPLOY_START_FRAME 6.0
 #define DEPLOY_END_FRAME 170.0
@@ -72,7 +72,8 @@
 #define DEPLOYED_GRAVITY 0.1
 #define NORMAL_GRAVITY 1.0
 #define FALLRATE_TRIGGER 50.0
-#define CHUTE_MODEL "models/realchute.mdl"
+#define CHUTE_MODEL "models/rip_chute2.mdl"
+#define CHUTE_MODEL2 "models/rip_chute.mdl"
 #define GROUNDED (FL_ONGROUND | FL_INWATER)
 
 // From Ven's fakemeta_util include
@@ -84,29 +85,36 @@ new Float:g_frame[33]
 new g_entity[33]
 new g_status[33]
 new g_control
+new g_2chutes
 
 public plugin_precache()
 {
-	if (file_exists(CHUTE_MODEL))
+	g_2chutes = register_cvar("realchute_2chutes", "0" )
+	g_control = register_cvar("realchute_ctrl", "1" )
+
+	if (!file_exists(CHUTE_MODEL))
+		set_fail_state("Chute model not found")
+	else {
 		precache_model(CHUTE_MODEL)
-	else
-		set_fail_state("Disabling realchute.amxx plugin. (Chute model not found)")
+	}
+	if (get_pcvar_num(g_2chutes) && !file_exists(CHUTE_MODEL2))
+		set_fail_state("Chute model 2 not found")
+	else {
+		precache_model(CHUTE_MODEL2)
+	}
 }
 
 public plugin_init()
 {
-	g_control = register_cvar("realchute_ctrl", "1" )
-
 	register_plugin(PLUGIN, VERSION, AUTHOR)
 	register_forward(FM_PlayerPreThink, "client_prethink")
-	register_event("ResetHUD", "player_spawn", "be")
 	register_concmd("amx_realchute", "ctrlchutes", ADMIN_CFG, "<0|1|2|?>")
 	register_clcmd("say /chutes", "cmdChutes", 0, "Displays server parachute status")
 	register_clcmd("say /chute", "cmdChutesP", 0, "Displays your parachute status")
 	register_clcmd("ripcord", "cmdRipcord", 0, "Deploy parachute")
-	register_clcmd("fullupdate", "cmdFullUpdate", 0, "Block fullupdate")
+	RegisterHam(Ham_Spawn, "player", "HAM_player_spawn", 1)
 
-	register_cvar(SVARIABLE, SVALUE, FCVAR_SERVER|FCVAR_SPONLY)
+	register_cvar(PLUGIN, SVALUE, FCVAR_SERVER|FCVAR_SPONLY)
 }
 
 public client_prethink(id)
@@ -132,7 +140,10 @@ public client_prethink(id)
 			g_entity[id] = fm_create_entity("info_target")
 			set_pev(g_entity[id], pev_aiment, id)
 			set_pev(g_entity[id], pev_movetype, MOVETYPE_FOLLOW)
-			fm_entity_set_model(g_entity[id], CHUTE_MODEL)
+			if (get_pcvar_num(g_2chutes) && get_user_team(id) == 2)
+				fm_entity_set_model(g_entity[id], CHUTE_MODEL2)
+			else
+				fm_entity_set_model(g_entity[id], CHUTE_MODEL)
 			set_pev(g_entity[id], pev_sequence, 0)
 			g_frame[id] = DEPLOY_START_FRAME
 			g_status[id] = 3
@@ -242,7 +253,7 @@ public chute_reset(id)
 	g_status[id] = get_pcvar_num(g_control) > 1 ? 1 : 0
 }
 
-public player_spawn(id)
+public HAM_player_spawn(id)
 {
 	chute_reset(id)
 	g_status[id] = 1
@@ -256,9 +267,4 @@ public client_putinserver(id)
 public client_disconnect(id)
 {
 	chute_reset(id)
-}
-
-public cmdFullUpdate(id)
-{
-	return PLUGIN_HANDLED_MAIN
 }
