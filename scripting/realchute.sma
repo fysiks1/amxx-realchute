@@ -56,6 +56,7 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <fakemeta>
+#include <engine>
 
 #define PLUGIN "RealChute"
 #define VERSION "1.92"
@@ -110,7 +111,16 @@ public plugin_init()
 }
 
 public client_prethink(id)
-{ 
+{
+	static button, oldbutton
+	button = get_user_button(id)
+	oldbutton = get_user_oldbutton(id)
+
+	if( button & IN_USE && !(oldbutton & IN_USE) )
+	{
+		cmdRipcord(id)
+	}
+
 	if (g_status[id] < 2)
 		return FMRES_IGNORED		// 99.99% of the time = true - exit if not using chute
 
